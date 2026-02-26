@@ -9,8 +9,6 @@ export const getAllRecipes = async () => {
 
 /* Get Recipe Details with Ingredients */
 export const getRecipeDetails = async (recipeId) => {
-    // Note: To fetch relations in Supabase, we can use embedded selects if configured with foreign keys
-    // Otherwise we map them explicitly.
     const { data: recipe, error: recipeError } = await supabase
         .from("recipes")
         .select("*")
@@ -27,4 +25,20 @@ export const getRecipeDetails = async (recipeId) => {
     if (ingredientsError) return { error: ingredientsError };
 
     return { data: { ...recipe, ingredients } };
+};
+
+/* Create Recipe */
+export const createRecipe = async (recipeData) => {
+    return await supabase
+        .from("recipes")
+        .insert(recipeData)
+        .select()
+        .single();
+};
+
+/* Add Recipe Ingredients */
+export const addRecipeIngredients = async (ingredientsData) => {
+    return await supabase
+        .from("recipe_ingredients")
+        .insert(ingredientsData);
 };

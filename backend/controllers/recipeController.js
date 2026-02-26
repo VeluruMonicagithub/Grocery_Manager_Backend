@@ -1,6 +1,38 @@
 import * as RecipeModel from "../models/recipeModel.js";
 import * as PantryModel from "../models/pantryModel.js";
 
+export const createRecipe = async (req, res) => {
+    try {
+        const { title, description, dietary_tags, calories, protein, carbs, fat, image_url, ingredients } = req.body;
+
+        const { data, error } = await RecipeModel.createRecipe({
+            title, description, dietary_tags, calories, protein, carbs, fat, image_url
+        });
+
+        if (error) return res.status(400).json({ error });
+
+        if (ingredients && ingredients.length > 0 && data) {
+            const recipeId = data.id;
+            const ingredientsToInsert = ingredients.map(i => ({
+                recipe_id: recipeId,
+                ingredient_name: i.ingredient_name,
+                quantity: i.quantity,
+                unit: i.unit
+            }));
+
+            const { error: ingError } = await RecipeModel.addRecipeIngredients(ingredientsToInsert);
+            if (ingError) {
+                console.error("Error inserting ingredients:", ingError);
+            }
+        }
+
+        res.status(201).json(data);
+    } catch (err) {
+        console.error("Create Recipe Error:", err);
+        res.status(500).json({ error: "Failed to create recipe." });
+    }
+};
+
 export const fetchRecipes = async (req, res) => {
     const { data, error } = await RecipeModel.getAllRecipes();
 
