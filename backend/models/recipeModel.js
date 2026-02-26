@@ -42,3 +42,17 @@ export const addRecipeIngredients = async (ingredientsData) => {
         .from("recipe_ingredients")
         .insert(ingredientsData);
 };
+
+/* Log Prepared Meal */
+export const logPreparedMeal = async (userId, recipeId, portions) => {
+    return await supabase
+        .from("prepared_meals")
+        .insert([{
+            user_id: userId,
+            recipe_id: recipeId,
+            portions: portions,
+            prepared_at: new Date().toISOString()
+        }])
+        .select()
+        .single();
+};

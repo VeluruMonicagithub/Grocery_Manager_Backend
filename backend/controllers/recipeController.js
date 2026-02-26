@@ -120,3 +120,19 @@ export const getPantryMatchedRecipes = async (req, res) => {
         res.status(500).json({ error: "Failed to calculate pantry matches." });
     }
 };
+
+export const markRecipeAsPrepared = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { recipeId, portions = 1 } = req.body;
+
+        const { data, error } = await RecipeModel.logPreparedMeal(userId, recipeId, portions);
+
+        if (error) return res.status(400).json({ error });
+
+        res.status(201).json(data);
+    } catch (err) {
+        console.error("Mark Prepared Error:", err);
+        res.status(500).json({ error: "Failed to log prepared meal." });
+    }
+};

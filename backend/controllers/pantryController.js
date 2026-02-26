@@ -15,7 +15,7 @@ export const fetchPantry = async (req, res) => {
 export const createPantryItem = async (req, res) => {
     const userId = req.user.id;
 
-    const { name, quantity, unit, threshold } = req.body;
+    const { name, quantity, unit, threshold, expiration_date } = req.body;
 
     const category = getSection(name);
     // Let frontend optionally override auto-category if they passed one
@@ -28,6 +28,7 @@ export const createPantryItem = async (req, res) => {
         quantity,
         unit,
         threshold,
+        expiration_date,
     });
 
     if (error) return res.status(400).json({ error });

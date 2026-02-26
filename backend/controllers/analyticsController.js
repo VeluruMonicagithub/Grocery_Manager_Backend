@@ -25,57 +25,77 @@ export const getAnalytics = async (req, res) => {
             totalSpent = history.reduce((sum, h) => sum + (parseFloat(h.total_spent) || 0), 0);
         }
 
-        // 3. For categories, we need to look at checked items in the current list, 
-        // OR we would need a more complex schema to track historical items.
-        // For now, we aggregate the current list's checked items to show current spending breakdown
+        // 3. Nutrition & Category Aggregation
         let { data: items } = await supabase
             .from("grocery_items")
-            .select("section, price, is_checked, quantity")
+            .select("section, price, is_checked, quantity, calories, protein, carbs, fat")
             .eq("list_id", list?.id);
 
         let currentListSpent = 0;
-        let categoriesMap = {
-            "Produce": 0,
-            "Snacks": 0,
-            "Dairy & Other": 0
-        };
+        let nutrition = { calories: 0, protein: 0, carbs: 0, fat: 0 };
+        let categoriesMap = { "Produce": 0, "Snacks": 0, "Dairy & Other": 0 };
 
         if (items && items.length > 0) {
             items.forEach(item => {
-                if (item.is_checked && item.price) {
-                    const itemTotal = (parseFloat(item.price) || 0) * (item.quantity || 1);
-                    currentListSpent += itemTotal;
+                if (item.is_checked) {
+                    const qty = item.quantity || 1;
 
-                    const section = item.section?.toLowerCase() || "";
-                    if (section.includes("produce") || section.includes("veg") || section.includes("fruit")) {
-                        categoriesMap["Produce"] += itemTotal;
-                    } else if (section.includes("snack") || section.includes("sweet")) {
-                        categoriesMap["Snacks"] += itemTotal;
-                    } else {
-                        categoriesMap["Dairy & Other"] += itemTotal;
+                    // Spending
+                    if (item.price) {
+                        const itemTotal = (parseFloat(item.price) || 0) * qty;
+                        currentListSpent += itemTotal;
+
+                        const section = item.section?.toLowerCase() || "";
+                        if (section.includes("produce") || section.includes("veg") || section.includes("fruit")) {
+                            categoriesMap["Produce"] += itemTotal;
+                        } else if (section.includes("snack") || section.includes("sweet")) {
+                            categoriesMap["Snacks"] += itemTotal;
+                        } else {
+                            categoriesMap["Dairy & Other"] += itemTotal;
+                        }
                     }
+
+                    // Nutrition from purchases (Potentially bought nutrients)
+                    nutrition.calories += (item.calories || 0) * qty;
+                    nutrition.protein += (item.protein || 0) * qty;
+                    nutrition.carbs += (item.carbs || 0) * qty;
+                    nutrition.fat += (item.fat || 0) * qty;
                 }
             });
         }
 
-        // If they have spent money historically, we use that for the main display, 
-        // but if they haven't categorised anything yet, we still show the categories they have NOW.
-        // To make it fully "real", we rely purely on the DB data:
+        // 4. Prepared Meals Nutrition (Actual intake)
+        const { data: preparedMeals } = await supabase
+            .from("prepared_meals")
+            .select("portions, recipes(calories, protein, carbs, fat)")
+            .eq("user_id", userId);
+
+        if (preparedMeals && preparedMeals.length > 0) {
+            preparedMeals.forEach(meal => {
+                const recipe = meal.recipes;
+                const portions = meal.portions || 1;
+                if (recipe) {
+                    nutrition.calories += (recipe.calories || 0) * portions;
+                    nutrition.protein += (recipe.protein || 0) * portions;
+                    nutrition.carbs += (recipe.carbs || 0) * portions;
+                    nutrition.fat += (recipe.fat || 0) * portions;
+                }
+            });
+        }
 
         const categories = [
-            { name: "Produce", amount: categoriesMap["Produce"], color: "#4caf50" }, // Green
-            { name: "Snacks", amount: categoriesMap["Snacks"], color: "#ffca28" }, // Yellow
-            { name: "Dairy & Other", amount: categoriesMap["Dairy & Other"], color: "#42a5f5" }, // Blue
+            { name: "Produce", amount: categoriesMap["Produce"], color: "#4caf50" },
+            { name: "Snacks", amount: categoriesMap["Snacks"], color: "#ffca28" },
+            { name: "Dairy & Other", amount: categoriesMap["Dairy & Other"], color: "#42a5f5" },
         ].filter(c => c.amount > 0);
 
-        // If history is empty and current list is empty, it will naturally be 0.
-        // Use currentListSpent for the chart if history is smaller than current (meaning they are shopping right now)
         const displaySpent = Math.max(totalSpent, currentListSpent);
 
         res.json({
             goal,
             spent: displaySpent,
-            categories
+            categories,
+            nutrition
         });
     } catch (error) {
         console.error("Analytics Error:", error);

@@ -51,6 +51,31 @@ export const createGroceryItem = async (req, res) => {
 
     const section = getSection(name);
 
+    // Call AI for nutrition estimate if columns exist
+    let nutrition = { calories: 0, protein: 0, carbs: 0, fat: 0 };
+    try {
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (apiKey) {
+            const prompt = `Return the estimated nutritional information for 100g or 1 standard packet of "${name}". 
+            Respond ONLY with a JSON object containing keys: calories (numeric), protein (numeric), carbs (numeric), fat (numeric). 
+            Example: {"calories": 165, "protein": 31, "carbs": 0, "fat": 3.6}`;
+
+            const aiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }] })
+            });
+            const aiData = await aiRes.json();
+            const reply = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (reply) {
+                const jsonStr = reply.replace(/```json|```/g, '').trim();
+                nutrition = JSON.parse(jsonStr);
+            }
+        }
+    } catch (err) {
+        console.error("Auto-nutrition failed:", err);
+    }
+
     const { data, error } =
         await GroceryModel.addGroceryItem({
             list_id: list.id,
@@ -60,6 +85,7 @@ export const createGroceryItem = async (req, res) => {
             price,
             coupon,
             notes,
+            ...nutrition
         });
 
     if (error) return res.status(400).json({ error });
