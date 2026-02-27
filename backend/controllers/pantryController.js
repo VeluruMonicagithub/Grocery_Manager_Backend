@@ -1,5 +1,6 @@
 import * as PantryModel from "../models/pantryModel.js";
 import { getSection } from "../utils/sectionOrganizer.js";
+import { addNotification } from "./notificationController.js";
 
 export const fetchPantry = async (req, res) => {
     const userId = req.user.id;
@@ -33,6 +34,10 @@ export const createPantryItem = async (req, res) => {
 
     if (error) return res.status(400).json({ error });
 
+    if (req.user.isGuest) {
+        addNotification(req.user.id, `Guest added "${name}" to pantry`, "pantry_add");
+    }
+
     res.json(data);
 };
 export const updatePantry = async (req, res) => {
@@ -44,6 +49,11 @@ export const updatePantry = async (req, res) => {
 
     if (error) return res.status(400).json({ error });
 
+    if (req.user.isGuest) {
+        const itemName = data?.[0]?.name || "item";
+        addNotification(req.user.id, `Guest updated quantity of "${itemName}"`, "pantry_update");
+    }
+
     res.json(data);
 };
 
@@ -53,6 +63,10 @@ export const deletePantry = async (req, res) => {
     const { error } = await PantryModel.deletePantryItem(id);
 
     if (error) return res.status(400).json({ error });
+
+    if (req.user.isGuest) {
+        addNotification(req.user.id, `Guest removed an item from pantry`, "pantry_remove");
+    }
 
     res.json({ message: "Deleted successfully" });
 };

@@ -1,4 +1,8 @@
 
+// ─── Gemini (text-only endpoints) ───────────────────────────────────────────
+
+const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
+const GEMINI_MODEL = "gemini-2.5-flash";
 
 export const askChef = async (req, res) => {
     try {
@@ -13,13 +17,9 @@ export const askChef = async (req, res) => {
             return res.status(500).json({ error: "GEMINI_API_KEY is not configured." });
         }
 
-        // Prepare contents array
-        // The history looks like [{ role: "user", parts: [{ text: "..." }] }, { role: "model", parts: [{ text: "..." }] }]
-        let requestContents = [];
-
-        // Add a system prompt conceptually as the first user message if history is empty, 
-        // or just rely on the prompt context.
         const systemPrompt = "You are a friendly, helpful, and highly skilled AI Chef named 'Pantry Chef'. Your goal is to help users with cooking, recipes, ingredient substitutions, and meal planning. Keep your answers relatively concise, formatted well, and enthusiastic.";
+
+        let requestContents = [];
 
         if (history && history.length > 0) {
             requestContents = [...history];
@@ -30,14 +30,10 @@ export const askChef = async (req, res) => {
             parts: [{ text: (history && history.length > 0 ? "" : systemPrompt + "\n\nUser: ") + message }]
         });
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+        const response = await fetch(`${GEMINI_BASE}/${GEMINI_MODEL}:generateContent?key=${apiKey}`, {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                contents: requestContents
-            })
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ contents: requestContents })
         });
 
         const data = await response.json();
@@ -73,10 +69,9 @@ export const getEstimatedPrice = async (req, res) => {
             return res.status(500).json({ error: "GEMINI_API_KEY is not configured." });
         }
 
-        // Just ask directly for a number
         const prompt = `Return a realistic estimated price in INR (Indian Rupees) for 1 standard unit/packet of "${itemName}". Respond ONLY with a single numeric value, no symbols, no text. For example, if it's 50 rupees, respond with exactly: 50`;
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+        const response = await fetch(`${GEMINI_BASE}/${GEMINI_MODEL}:generateContent?key=${apiKey}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -95,7 +90,6 @@ export const getEstimatedPrice = async (req, res) => {
 
         let estimatedPrice = 0;
         if (reply) {
-            // strip everything except digits and decimal point
             const numStr = reply.replace(/[^\d.]/g, '');
             estimatedPrice = Number(numStr) || 0;
         }
@@ -125,7 +119,7 @@ export const getNutritionEstimate = async (req, res) => {
         Do not include any other text or markdown formatting. 
         Example: {"calories": 165, "protein": 31, "carbs": 0, "fat": 3.6}`;
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+        const response = await fetch(`${GEMINI_BASE}/${GEMINI_MODEL}:generateContent?key=${apiKey}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -145,7 +139,6 @@ export const getNutritionEstimate = async (req, res) => {
         let nutrition = { calories: 0, protein: 0, carbs: 0, fat: 0 };
         if (reply) {
             try {
-                // Remove potential markdown code blocks
                 const jsonStr = reply.replace(/```json|```/g, '').trim();
                 nutrition = JSON.parse(jsonStr);
             } catch (e) {
@@ -159,3 +152,5 @@ export const getNutritionEstimate = async (req, res) => {
         res.status(500).json({ error: "Internal server error." });
     }
 };
+
+

@@ -1,6 +1,7 @@
 import * as GroceryModel from "../models/groceryModel.js";
 import { getSection } from "../utils/sectionOrganizer.js";
 import { supabase } from "../config/supabaseClient.js";
+import { addNotification } from "./notificationController.js";
 
 export const fetchGrocery = async (req, res) => {
     const userId = req.user.id;
@@ -90,6 +91,10 @@ export const createGroceryItem = async (req, res) => {
 
     if (error) return res.status(400).json({ error });
 
+    if (req.user.isGuest) {
+        addNotification(req.user.id, `Guest added "${name}" to shopping list`, "grocery_add");
+    }
+
     res.json(data);
 };
 
@@ -100,6 +105,12 @@ export const toggleGrocery = async (req, res) => {
         await GroceryModel.toggleItem(id, is_checked);
 
     if (error) return res.status(400).json({ error });
+
+    if (req.user.isGuest) {
+        const itemName = data?.[0]?.name || "item";
+        const action = is_checked ? "checked off" : "unchecked";
+        addNotification(req.user.id, `Guest ${action} "${itemName}"`, "grocery_toggle");
+    }
 
     res.json(data);
 };
