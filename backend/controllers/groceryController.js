@@ -2,6 +2,8 @@ import * as GroceryModel from "../models/groceryModel.js";
 import { getSection } from "../utils/sectionOrganizer.js";
 import { supabase } from "../config/supabaseClient.js";
 import { addNotification } from "./notificationController.js";
+import { GEMINI_BASE, GEMINI_MODEL } from "../config/aiConfig.js";
+
 
 export const fetchGrocery = async (req, res) => {
     const userId = req.user.id;
@@ -61,7 +63,7 @@ export const createGroceryItem = async (req, res) => {
             Respond ONLY with a JSON object containing keys: calories (numeric), protein (numeric), carbs (numeric), fat (numeric). 
             Example: {"calories": 165, "protein": 31, "carbs": 0, "fat": 3.6}`;
 
-            const aiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+            const aiRes = await fetch(`${GEMINI_BASE}/${GEMINI_MODEL}:generateContent?key=${apiKey}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }] })
@@ -126,4 +128,24 @@ export const setBudget = async (req, res) => {
     if (error) return res.status(400).json({ error });
 
     res.json(data);
+};
+export const clearGrocery = async (req, res) => {
+    const userId = req.user.id;
+
+    try {
+        const list = await GroceryModel.getOrCreateList(userId);
+
+        // Reset budget to 0
+        await GroceryModel.updateListBudget(list.id, 0);
+
+        // Delete checked items
+        const { error } = await GroceryModel.clearCheckedItems(list.id);
+
+        if (error) return res.status(400).json({ error });
+
+        res.json({ message: "List cleared and budget reset" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to clear grocery trip" });
+    }
 };

@@ -1,8 +1,4 @@
-
-// ─── Gemini (text-only endpoints) ───────────────────────────────────────────
-
-const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
-const GEMINI_MODEL = "gemini-2.5-flash";
+import { GEMINI_BASE, GEMINI_MODEL } from "../config/aiConfig.js";
 
 export const askChef = async (req, res) => {
     try {

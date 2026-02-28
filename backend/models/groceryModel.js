@@ -56,3 +56,11 @@ export const updateListBudget = async (listId, budget_limit) => {
         .select()
         .single();
 };
+/* Clear Checked Items */
+export const clearCheckedItems = async (listId) => {
+    return await supabase
+        .from("grocery_items")
+        .delete()
+        .eq("list_id", listId)
+        .eq("is_checked", true);
+};
