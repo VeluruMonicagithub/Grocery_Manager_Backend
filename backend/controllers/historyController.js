@@ -12,9 +12,9 @@ export const fetchHistory = async (req, res) => {
 
 export const createHistoryRecord = async (req, res) => {
     const userId = req.user.id;
-    const { list_id, total_spent } = req.body;
+    const { list_id, total_spent, categories, nutrition } = req.body;
 
-    const { data, error } = await HistoryModel.addHistory(userId, list_id, total_spent);
+    const { data, error } = await HistoryModel.addHistory(userId, list_id, total_spent, categories, nutrition);
 
     if (error) return res.status(400).json({ error });
 
